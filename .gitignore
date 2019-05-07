@@ -44,4 +44,4 @@ sysinfo.txt
 **/[Pp]ackages/*
 
 # models which should not be commited
-Assets/item*
+local_ignored_pets/

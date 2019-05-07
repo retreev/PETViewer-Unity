@@ -1,117 +1,52 @@
-using System.Collections.Generic;
+using System;
 using System.IO;
-using System.Text.RegularExpressions;
-using PangLib.PET;
-using PangLib.PET.DataModels;
 using UnityEngine;
-using Texture = PangLib.PET.DataModels.Texture;
 
 public class PETViewer : MonoBehaviour
 {
+    private const string PetPath = "local_ignored_pets";
+    private const string TextureSearchPath = "local_ignored_pets";
+
     private void Start()
     {
-//        DirectoryInfo dir = new DirectoryInfo("Assets/item/ase");
-//        FileInfo[] info = dir.GetFiles("*.pet");
-
-//        Vector3 lastPos = Vector3.zero;
-//        foreach (FileInfo file in info)
-//        {
-//            try
-//            {
-//                CreateGameObject(file.FullName, lastPos);
-//                lastPos += new Vector3(10, 0, 0);
-//            }
-//            catch (Exception e)
-//            {
-//                Debug.Log(e.Message);
-//            }
-//        }
-
-        CreateGameObject("Assets/item/ase/item0_01.pet", Vector3.zero);
+//        Vector3 spacing = new Vector3(3, 0, 0);
+//        ViewAllPets(spacing);
+        ViewSinglePet("local_ignored_pets/item/ase/item0_34.pet");
+        ViewSinglePet("local_ignored_pets/item/ase/item0_01.pet");
     }
 
-    private void CreateGameObject(string fileName, Vector3 position)
+    private void ViewAllPets(Vector3 spacing)
     {
-        Debug.Log(fileName);
+        string[] files = Directory.GetFiles(PetPath, "*.pet", SearchOption.AllDirectories);
 
-        PETFile file = new PETFile(fileName);
-
-        GameObject go = new GameObject {name = Regex.Replace(fileName, @"$.*\\", "")};
-
-        go.transform.position = position;
-
-        MeshFilter meshFilter = go.AddComponent<MeshFilter>();
-        meshFilter.mesh = CreateMesh(file);
-
-        MeshRenderer meshRenderer = go.AddComponent<MeshRenderer>();
-        List<Material> materials = new List<Material>();
-        foreach (Texture texture in file.Textures)
+        Vector3 lastPos = new Vector3(0, 1, 0);
+        for (int i = 0; i < files.Length; i++)
         {
-            materials.Add(CreateMaterial(texture.FileName));
-        }
-
-        meshRenderer.materials = materials.ToArray();
-//        meshRenderer.materials = new[] {materials[0]};
-    }
-
-    private Mesh CreateMesh(PETFile file)
-    {
-        Mesh mesh = new Mesh();
-
-        int vertexCount = file.Vertices.Count;
-        int polygonCount = file.Polygons.Count;
-
-        // create unique vertices with the index used in the polygons
-        Vector3[] uniqueVertices = new Vector3[vertexCount];
-        for (int i = 0; i < vertexCount; i++)
-        {
-            Vertex fileVertex = file.Vertices[i];
-            uniqueVertices[i] = new Vector3(fileVertex.X, fileVertex.Y, fileVertex.Z);
-        }
-
-        Vector3[] vertices = new Vector3[polygonCount * 3];
-        Vector2[] uv = new Vector2[polygonCount * 3];
-        int[] triangles = new int[polygonCount * 3];
-
-        // polygon order is not important
-        for (int i = 0; i < polygonCount; i++)
-        {
-            Polygon polygon = file.Polygons[i];
-            for (int j = 0; j < 3; j++)
+            string file = files[i];
+            try
             {
-                PolygonIndex polygonIndex = polygon.PolygonIndices[j];
-
-                int vertexIndex = (int) polygonIndex.Index;
-                int targetIndex = i * 3 + j;
-
-                vertices[targetIndex] = uniqueVertices[vertexIndex];
-                uv[targetIndex] = new Vector2(polygonIndex.U, 1 - polygonIndex.V);
-                triangles[targetIndex] = targetIndex;
+                Debug.Log("Creating object from file: " + file);
+                PangObject pangObject = new PangObject(file, TextureSearchPath);
+                GameObject go = pangObject.GameObject;
+                go.transform.position = lastPos;
+                lastPos += spacing;
+            }
+            catch (TextureNotFoundException e)
+            {
+                // files with missing textures will be created but not visible
+                Debug.LogWarning(e.Message);
+            }
+            catch (Exception e)
+            {
+                // files that can't be parsed won't be created at all
+                Debug.LogError(e.ToString());
             }
         }
-
-        mesh.vertices = vertices;
-        mesh.uv = uv;
-        mesh.triangles = triangles;
-
-        return mesh;
     }
 
-    private Material CreateMaterial(string textureName)
+    private void ViewSinglePet(string filePath)
     {
-        byte[] fileData = File.ReadAllBytes(GetPath("item/map_source/" + textureName));
-        Texture2D texture = new Texture2D(1, 1); // size will be changed after loading image
-        texture.LoadImage(fileData);
-        //Find the Standard Shader
-        Material material = new Material(Shader.Find("Standard"));
-        //Set Texture on the material
-        material.SetTexture("_MainTex", texture);
-
-        return material;
-    }
-
-    private string GetPath(string fileName)
-    {
-        return Application.dataPath + "/" + fileName;
+        PangObject pangObject = new PangObject(filePath, TextureSearchPath);
+        pangObject.GameObject.transform.position = Vector3.zero;
     }
 }
