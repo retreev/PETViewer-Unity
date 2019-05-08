@@ -139,14 +139,23 @@ public class PangObject
     private Texture2D CreateAlphaTexture(string path)
     {
         byte[] fileData = File.ReadAllBytes(path);
-        Texture2D texture = new Texture2D(0, 0, TextureFormat.Alpha8, false);
+        Texture2D texture = new Texture2D(0, 0);
         texture.LoadImage(fileData);
         return texture;
     }
 
     private Texture2D CreateEmptyAlphaTextureFrom(Texture2D mainTexture)
     {
-        Texture2D emptyAlphaTexture = new Texture2D(mainTexture.width, mainTexture.height, TextureFormat.Alpha8, false);
+        Texture2D emptyAlphaTexture = new Texture2D(mainTexture.width, mainTexture.height);
+        
+        // white = no transparency
+        Color[] fillColorArray =  emptyAlphaTexture.GetPixels();
+        for(int i = 0; i < fillColorArray.Length; i++)
+        {
+            fillColorArray[i] = Color.white;
+        }
+        emptyAlphaTexture.SetPixels(fillColorArray);
+        
         return emptyAlphaTexture;
     }
 }
