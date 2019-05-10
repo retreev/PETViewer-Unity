@@ -39,7 +39,8 @@ public class PangObject
         {
             Material material;
 
-            string texturePath = FileHelper.GetTexture(_textureSearchPath, petTextures[i].FileName);
+            string textureFileName = petTextures[i].FileName;
+            string texturePath = FileHelper.GetTexture(_textureSearchPath, textureFileName);
             Texture2D mainTexture = CreateTexture(texturePath);
 
             // TODO there might be an attribute in the PET file telling which textures have masks
@@ -48,14 +49,14 @@ public class PangObject
             if (File.Exists(maskPath))
             {
                 material = new Material(Shader.Find("MaskedTexture"));
-                material.SetTexture("_MainTex", mainTexture);
                 material.SetTexture("_Mask", CreateAlphaTexture(maskPath));
             }
             else
             {
                 material = new Material(Shader.Find("OpaqueTexture"));
-                material.SetTexture("_MainTex", mainTexture);
             }
+            material.SetTexture("_MainTex", mainTexture);
+            material.name = textureFileName;
 
             materials[i] = material;
         }
