@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using PangLib.PET;
 using PangLib.PET.DataModels;
 using UnityEngine;
@@ -10,9 +11,8 @@ public class PangObject
     public GameObject GameObject { get; }
 
     private readonly PETFile _pet;
+
     private readonly string _textureSearchPath;
-    // by textureId, describes the position of the texture in the texture atlas
-    private Rect[] _atlasUvRects;
 
     public PangObject(string filePath, string textureSearchPath)
     {
@@ -22,42 +22,45 @@ public class PangObject
         GameObject = new GameObject();
         GameObject.name = Path.GetFileName(filePath);
 
-        MeshRenderer meshRenderer = GameObject.AddComponent<MeshRenderer>();
-        meshRenderer.material = CreateMaterial();
-
         MeshFilter meshFilter = GameObject.AddComponent<MeshFilter>();
         meshFilter.mesh = CreateMesh();
+
+        MeshRenderer meshRenderer = GameObject.AddComponent<MeshRenderer>();
+        meshRenderer.materials = CreateMaterials();
     }
 
-    private Material CreateMaterial()
+    private Material[] CreateMaterials()
     {
         List<Texture> petTextures = _pet.Textures;
         int textureCount = petTextures.Count;
 
-        Texture2D[] mainTextures = new Texture2D[textureCount];
-        Texture2D[] maskTextures = new Texture2D[textureCount];
+        Material[] materials = new Material[textureCount];
         for (int i = 0; i < textureCount; i++)
         {
-            Texture texture = petTextures[i];
+            Material material;
 
-            string texturePath = FileHelper.GetTexture(_textureSearchPath, texture.FileName);
+            string texturePath = FileHelper.GetTexture(_textureSearchPath, petTextures[i].FileName);
             Texture2D mainTexture = CreateTexture(texturePath);
-            mainTextures[i] = mainTexture;
 
             // TODO there might be an attribute in the PET file telling which textures have masks
             // find mask for each texture or create an empty one if it doesn't exist
             string maskPath = texturePath.Replace(".jpg", "_mask.jpg");
             if (File.Exists(maskPath))
             {
-                maskTextures[i] = CreateAlphaTexture(maskPath);
+                material = new Material(Shader.Find("MaskedTexture"));
+                material.SetTexture("_MainTex", mainTexture);
+                material.SetTexture("_Mask", CreateAlphaTexture(maskPath));
             }
             else
             {
-                maskTextures[i] = CreateEmptyAlphaTextureFrom(mainTexture);
+                material = new Material(Shader.Find("OpaqueTexture"));
+                material.SetTexture("_MainTex", mainTexture);
             }
+
+            materials[i] = material;
         }
 
-        return CreateMaterialWithMasks(mainTextures, maskTextures);
+        return materials;
     }
 
     private Mesh CreateMesh()
@@ -65,7 +68,6 @@ public class PangObject
         Mesh mesh = new Mesh();
 
         int vertexCount = _pet.Vertices.Count;
-        int polygonCount = _pet.Polygons.Count;
 
         // create unique vertices with the index used in the polygons
         Vector3[] uniqueVertices = new Vector3[vertexCount];
@@ -75,9 +77,13 @@ public class PangObject
             uniqueVertices[i] = new Vector3(fileVertex.X, fileVertex.Y, fileVertex.Z);
         }
 
+        int polygonCount = _pet.Polygons.Count;
+
         Vector3[] vertices = new Vector3[polygonCount * 3];
         Vector2[] uv = new Vector2[polygonCount * 3];
-        int[] triangles = new int[polygonCount * 3];
+
+        Dictionary<int, List<int>> trianglesByTextureIndex = Enumerable.Range(0, _pet.Textures.Count)
+            .ToDictionary(i => i, _ => new List<int>());
 
         for (int i = 0; i < polygonCount; i++)
         {
@@ -86,46 +92,29 @@ public class PangObject
             {
                 PolygonIndex polygonIndex = polygon.PolygonIndices[j];
 
-                int vertexIndex = (int) polygonIndex.Index;
                 int targetIndex = i * 3 + j;
+                int uniqueVertexIndex = (int) polygonIndex.Index;
+                int textureIndex = (int) polygon.TextureIndex;
 
-                vertices[targetIndex] = uniqueVertices[vertexIndex];
-                uv[targetIndex] = CalcUvInTextureAtlas(polygonIndex, polygon);
-                triangles[targetIndex] = targetIndex;
+                vertices[targetIndex] = uniqueVertices[uniqueVertexIndex];
+                uv[targetIndex] = new Vector2(polygonIndex.U, 1 - polygonIndex.V); // V in PETFiles is flipped
+
+                // group triangles by textureIndex to create a subMesh for each texture
+                trianglesByTextureIndex[textureIndex].Add(targetIndex);
             }
         }
 
         mesh.vertices = vertices;
         mesh.uv = uv;
-        mesh.triangles = triangles;
+
+        mesh.subMeshCount = trianglesByTextureIndex.Keys.Count;
+
+        for (int i = 0; i < mesh.subMeshCount; i++)
+        {
+            mesh.SetTriangles(trianglesByTextureIndex[i].ToArray(), i);
+        }
 
         return mesh;
-    }
-
-    private Material CreateMaterialWithMasks(Texture2D[] mainTextures, Texture2D[] maskTextures)
-    {
-        // combine all textures into a single atlas and create a matching atlas for the masks
-        Texture2D textureAtlas = new Texture2D(0, 0);
-        _atlasUvRects = textureAtlas.PackTextures(mainTextures, 0);
-
-        Texture2D maskAtlas = new Texture2D(textureAtlas.width, textureAtlas.height);
-        maskAtlas.PackTextures(maskTextures, 0);
-
-        Material material = new Material(Shader.Find("MaskedTexture"));
-        material.SetTexture("_MainTex", textureAtlas);
-        material.SetTexture("_Mask", maskAtlas);
-
-        return material;
-    }
-
-    private Vector2 CalcUvInTextureAtlas(PolygonIndex polygonIndex, Polygon polygon)
-    {
-        // V in PETFiles is flipped
-        Vector2 polygonUv = new Vector2(polygonIndex.U, 1 - polygonIndex.V);
-
-        Rect atlasUv = _atlasUvRects[polygon.TextureIndex];
-
-        return polygonUv * new Vector2(atlasUv.width, atlasUv.height) + new Vector2(atlasUv.x, atlasUv.y);
     }
 
     private Texture2D CreateTexture(string path)
@@ -142,20 +131,5 @@ public class PangObject
         Texture2D texture = new Texture2D(0, 0);
         texture.LoadImage(fileData);
         return texture;
-    }
-
-    private Texture2D CreateEmptyAlphaTextureFrom(Texture2D mainTexture)
-    {
-        Texture2D emptyAlphaTexture = new Texture2D(mainTexture.width, mainTexture.height);
-        
-        // white = no transparency
-        Color[] fillColorArray =  emptyAlphaTexture.GetPixels();
-        for(int i = 0; i < fillColorArray.Length; i++)
-        {
-            fillColorArray[i] = Color.white;
-        }
-        emptyAlphaTexture.SetPixels(fillColorArray);
-        
-        return emptyAlphaTexture;
     }
 }

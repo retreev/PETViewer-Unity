@@ -27,7 +27,7 @@ Shader "MaskedTexture" {
 //        }
 //        ENDCG
 
-        Cull Off // display texture on boths sites of a face
+        Cull Off // display texture on both sites of a face
 
         // write all pixels without transparency (alpha = 1)
         Pass {
