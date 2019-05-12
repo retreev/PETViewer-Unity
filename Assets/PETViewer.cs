@@ -11,10 +11,13 @@ public class PETViewer : MonoBehaviour
     {
 //        Vector3 spacing = new Vector3(3, 0, 0);
 //        ViewAllPets(spacing);
+
         ViewSinglePet("local_ignored_pets/item/ase/item0_01.pet", new Vector3(-5, 1, 0), Vector3.zero);
         ViewSinglePet("local_ignored_pets/item/ase/item0_34.pet", new Vector3(-2, 1, 0), new Vector3(0, 0, -90));
         ViewSinglePet("local_ignored_pets/item/ase/item0_18.pet", new Vector3(1, 1, 0), Vector3.zero);
         ViewSinglePet("local_ignored_pets/item/ase/item1_132_jp.pet", new Vector3(5, 1, 0), new Vector3(0, 0, 90));
+        
+//        ViewSinglePet("local_ignored_pets/29qb/qb.pet", new Vector3(0, 1, 0), Vector3.zero);
     }
 
     private void ViewAllPets(Vector3 spacing)
@@ -49,7 +52,9 @@ public class PETViewer : MonoBehaviour
     private void ViewSinglePet(string filePath, Vector3 position, Vector3 eulers)
     {
         PangObject pangObject = new PangObject(filePath, TextureSearchPath);
-        pangObject.GameObject.transform.position = position;
+        // TODO position and scale adjusted, because switching to a SkinnedMeshRenderer increased all model sizes
+        pangObject.GameObject.transform.position = position * 25;
+        pangObject.GameObject.transform.localScale = new Vector3(.1f,.1f,.1f);
         pangObject.GameObject.transform.Rotate(eulers);
     }
 }
