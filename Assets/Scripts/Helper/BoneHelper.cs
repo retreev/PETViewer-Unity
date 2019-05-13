@@ -1,4 +1,4 @@
-using PangLib.PET;
+using System.Collections.Generic;
 using PangLib.PET.DataModels;
 using UnityEngine;
 
@@ -7,14 +7,14 @@ namespace Helper
     public static class BoneHelper
     {
         // size is bone count
-        public static Transform[] CreateBones(PETFile pet, GameObject parentGameObject)
+        public static Transform[] CreateBones(List<Bone> petBones, GameObject parentGameObject)
         {
-            int boneCount = pet.Bones.Count;
+            int boneCount = petBones.Count;
             Transform[] bones = new Transform[boneCount];
 
             for (int i = 0; i < boneCount; i++)
             {
-                Bone petBone = pet.Bones[i];
+                Bone petBone = petBones[i];
 
                 Transform bone = new GameObject(petBone.Name).transform;
                 if (petBone.Parent == 255)

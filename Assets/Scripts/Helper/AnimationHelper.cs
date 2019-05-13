@@ -6,41 +6,32 @@ using Animation = PangLib.PET.DataModels.Animation;
 
 namespace Helper
 {
-    public class AnimationHelper
+    public static class AnimationHelper
     {
-        private AnimationClip _clip;
-
-        private PETFile _pet;
-
-        // TODO handle multiple animations?
-        public AnimationHelper(PETFile pet)
+        public static AnimationClip CreateAnimationClip(PETFile pet)
         {
-            _clip = new AnimationClip
+            AnimationClip clip = new AnimationClip
             {
                 legacy = true,
                 wrapMode = WrapMode.Loop
             };
 
-            _pet = pet;
-        }
-
-        public AnimationClip Convert()
-        {
-            foreach (Animation anim in _pet.Animations)
+            foreach (Animation anim in pet.Animations)
             {
                 // TODO AnimationFlags
 
-                string boneName = _pet.Bones[anim.BoneID].Name;
+                string boneName = pet.Bones[anim.BoneID].Name;
 
-                AddPositionDataToClip(anim.PositionData, boneName);
-                AddRotationDataToClip(anim.RotationData, boneName);
-                AddScalingDataToClip(anim.ScalingData, boneName);
+                AddPositionDataToClip(anim.PositionData, boneName, clip);
+                AddRotationDataToClip(anim.RotationData, boneName, clip);
+                AddScalingDataToClip(anim.ScalingData, boneName, clip);
             }
 
-            return _clip;
+            return clip;
         }
 
-        private void AddPositionDataToClip(IReadOnlyList<PositionData> positionData, string boneName)
+        private static void AddPositionDataToClip(IReadOnlyList<PositionData> positionData, string boneName,
+            AnimationClip clip)
         {
             int frameCount = positionData.Count;
 
@@ -56,12 +47,13 @@ namespace Helper
                 posZ[i] = new Keyframe(data.Time, data.Z);
             }
 
-            _clip.SetCurve(boneName, typeof(Transform), "localPosition.x", new AnimationCurve(posX));
-            _clip.SetCurve(boneName, typeof(Transform), "localPosition.y", new AnimationCurve(posY));
-            _clip.SetCurve(boneName, typeof(Transform), "localPosition.z", new AnimationCurve(posZ));
+            clip.SetCurve(boneName, typeof(Transform), "localPosition.x", new AnimationCurve(posX));
+            clip.SetCurve(boneName, typeof(Transform), "localPosition.y", new AnimationCurve(posY));
+            clip.SetCurve(boneName, typeof(Transform), "localPosition.z", new AnimationCurve(posZ));
         }
 
-        private void AddRotationDataToClip(IReadOnlyList<RotationData> rotationData, string boneName)
+        private static void AddRotationDataToClip(IReadOnlyList<RotationData> rotationData, string boneName,
+            AnimationClip clip)
         {
             int frameCount = rotationData.Count;
 
@@ -79,13 +71,14 @@ namespace Helper
                 rotW[i] = new Keyframe(data.Time, data.W);
             }
 
-            _clip.SetCurve(boneName, typeof(Transform), "localRotation.x", new AnimationCurve(rotX));
-            _clip.SetCurve(boneName, typeof(Transform), "localRotation.y", new AnimationCurve(rotY));
-            _clip.SetCurve(boneName, typeof(Transform), "localRotation.z", new AnimationCurve(rotZ));
-            _clip.SetCurve(boneName, typeof(Transform), "localRotation.w", new AnimationCurve(rotW));
+            clip.SetCurve(boneName, typeof(Transform), "localRotation.x", new AnimationCurve(rotX));
+            clip.SetCurve(boneName, typeof(Transform), "localRotation.y", new AnimationCurve(rotY));
+            clip.SetCurve(boneName, typeof(Transform), "localRotation.z", new AnimationCurve(rotZ));
+            clip.SetCurve(boneName, typeof(Transform), "localRotation.w", new AnimationCurve(rotW));
         }
 
-        private void AddScalingDataToClip(IReadOnlyList<ScalingData> scalingData, string boneName)
+        private static void AddScalingDataToClip(IReadOnlyList<ScalingData> scalingData, string boneName,
+            AnimationClip clip)
         {
             int frameCount = scalingData.Count;
 
@@ -101,9 +94,9 @@ namespace Helper
                 scaleZ[i] = new Keyframe(data.Time, data.Z);
             }
 
-            _clip.SetCurve(boneName, typeof(Transform), "localScale.x", new AnimationCurve(scaleX));
-            _clip.SetCurve(boneName, typeof(Transform), "localScale.y", new AnimationCurve(scaleY));
-            _clip.SetCurve(boneName, typeof(Transform), "localScale.z", new AnimationCurve(scaleZ));
+            clip.SetCurve(boneName, typeof(Transform), "localScale.x", new AnimationCurve(scaleX));
+            clip.SetCurve(boneName, typeof(Transform), "localScale.y", new AnimationCurve(scaleY));
+            clip.SetCurve(boneName, typeof(Transform), "localScale.z", new AnimationCurve(scaleZ));
         }
     }
 }

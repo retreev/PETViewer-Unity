@@ -1,5 +1,6 @@
 using System.IO;
 using Exception;
+using Helper;
 using UnityEngine;
 
 public class TestViewer : MonoBehaviour
@@ -10,14 +11,21 @@ public class TestViewer : MonoBehaviour
     private void Start()
     {
         Vector3 spacing = new Vector3(3, 0, 0);
-//        ViewAllPets(spacing);
+        ViewAllPets(spacing);
 
-        ViewSinglePet("local_ignored_pets/item/ase/item0_01.pet", new Vector3(-5, 1, 0), Vector3.zero);
+//        ViewSinglePet("local_ignored_pets/item/ase/item0_01.pet", new Vector3(-5, 1, 0), Vector3.zero);
 //        ViewSinglePet("local_ignored_pets/item/ase/item0_34.pet", new Vector3(-2, 1, 0), new Vector3(0, 0, -90));
 //        ViewSinglePet("local_ignored_pets/item/ase/item0_18.pet", new Vector3(1, 1, 0), Vector3.zero);
 //        ViewSinglePet("local_ignored_pets/item/ase/item1_132_jp.pet", new Vector3(5, 1, 0), new Vector3(0, 0, 90));
 
-        ViewSinglePet("local_ignored_pets/item/ase/item1_pma.pet", new Vector3(0, 1, 0), Vector3.zero);
+//        ViewSinglePet("local_ignored_pets/item/ase/item1_pma.pet", new Vector3(0, 1, 0), Vector3.zero); // odd one, v1.3
+//        ViewSinglePet("local_ignored_pets/item/item/ase/item1_380.pet", new Vector3(-5, 1, 0), Vector3.zero); // v1.3
+        // v1.3 files: 1_330, 1_331, 335, 336, 337
+//        ViewSinglePet("local_ignored_pets/item/ase/item0_34.pet", new Vector3(-2, 1, 0), new Vector3(0, 0, -90));
+//        ViewSinglePet("local_ignored_pets/item/ase/item0_18.pet", new Vector3(1, 1, 0), Vector3.zero);
+//        ViewSinglePet("local_ignored_pets/item/ase/item1_132_jp.pet", new Vector3(5, 1, 0), new Vector3(0, 0, 90));
+
+
 //        ViewSinglePet("local_ignored_pets/29qb/qb.pet", new Vector3(0, 1, 0), Vector3.zero);
     }
 
@@ -26,7 +34,7 @@ public class TestViewer : MonoBehaviour
         string[] files = Directory.GetFiles(PetPath, "*.pet", SearchOption.AllDirectories);
 
         Vector3 lastPos = new Vector3(0, 1, 0);
-        for (int i = 300; i < files.Length; i++)
+        for (int i = 0; i < files.Length; i++)
         {
             string file = files[i];
             try
@@ -50,10 +58,10 @@ public class TestViewer : MonoBehaviour
 
     private void ViewSinglePet(string filePath, Vector3 position, Vector3 eulers)
     {
-        PangObject pangObject = new PangObject(filePath, TextureSearchPath);
+        GameObject pangObject = GameObjectHelper.CreateGameObjectFromPet(filePath, TextureSearchPath);
         // TODO position and scale adjusted, because switching to a SkinnedMeshRenderer increased all model sizes
-        pangObject.GameObject.transform.position = position * 25;
-        pangObject.GameObject.transform.localScale = new Vector3(.1f, .1f, .1f);
-        pangObject.GameObject.transform.Rotate(eulers);
+        pangObject.transform.position = position * 25;
+        pangObject.transform.localScale = new Vector3(.1f, .1f, .1f);
+        pangObject.transform.Rotate(eulers);
     }
 }

@@ -15,10 +15,10 @@ namespace Helper
             {
                 vertices = CreateVertices(pet),
                 boneWeights = CreateBoneWeights(pet),
-                bindposes = CreateBindPoses(pet)
+                bindposes = CreateBindPoses(pet.Bones)
             };
 
-            Dictionary<int, Vector2[]> uvsById = CreateUvsById(pet);
+            Dictionary<int, Vector2[]> uvsById = CreateUvsById(pet.Polygons);
             for (int i = 0; i < uvsById.Count; i++)
             {
                 switch (i)
@@ -111,9 +111,9 @@ namespace Helper
         }
 
         // array size is bone count
-        private static Matrix4x4[] CreateBindPoses(PETFile pet)
+        private static Matrix4x4[] CreateBindPoses(IEnumerable<Bone> petBones)
         {
-            Matrix4x4[] bindPoses = pet.Bones
+            Matrix4x4[] bindPoses = petBones
                 .Select(bone => bone.Matrix)
                 .Select(m => new Matrix4x4(
                     new Vector4(m[0], m[1], m[2], 0),
@@ -124,10 +124,10 @@ namespace Helper
             return bindPoses;
         }
 
-        private static Dictionary<int, Vector2[]> CreateUvsById(PETFile pet)
+        private static Dictionary<int, Vector2[]> CreateUvsById(IReadOnlyList<Polygon> petPolygons)
         {
-            Dictionary<int, Vector2[]> uvs = Enumerable.Range(0, pet.Polygons[0].PolygonIndices[0].UVMappings.Count)
-                .ToDictionary(uvIndex => uvIndex, uvIndex => pet.Polygons
+            Dictionary<int, Vector2[]> uvs = Enumerable.Range(0, petPolygons[0].PolygonIndices[0].UVMappings.Count)
+                .ToDictionary(uvIndex => uvIndex, uvIndex => petPolygons
                     .SelectMany(polygon => polygon.PolygonIndices)
                     .Select(polygonIndex => polygonIndex.UVMappings[uvIndex])
                     .Select(uvMapping => new Vector2(uvMapping.U, 1 - uvMapping.V)) // V in PETFiles is flipped
@@ -139,6 +139,7 @@ namespace Helper
         // same size as Materials array
         private static Dictionary<int, List<int>> CreateTrianglesByTextureIndex(PETFile pet)
         {
+            // create lists because we don't know beforehand how many textures will be in a submesh
             Dictionary<int, List<int>> trianglesByTextureIndex = Enumerable.Range(0, pet.Textures.Count)
                 .ToDictionary(i => i, _ => new List<int>());
 

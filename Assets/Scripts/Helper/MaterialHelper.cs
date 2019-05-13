@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using Util;
 using Texture = PangLib.PET.DataModels.Texture;
@@ -8,51 +9,55 @@ namespace Helper
 {
     public static class MaterialHelper
     {
-        public static Material[] CreateMaterials(List<Texture> petTextures,
-            string textureSearchPath)
+        private static readonly Shader OpaqueShader = Shader.Find("OpaqueTexture");
+        private static readonly Shader MaskedShader = Shader.Find("MaskedTexture");
+
+        private static readonly int MainTex = Shader.PropertyToID("_MainTex");
+        private static readonly int Mask = Shader.PropertyToID("_Mask");
+
+        public static Material[] CreateMaterials(IEnumerable<Texture> petTextures, string textureSearchPath)
         {
-            int textureCount = petTextures.Count;
-
-            Material[] materials = new Material[textureCount];
-            for (int i = 0; i < textureCount; i++)
-            {
-                Material material;
-
-                string textureFileName = petTextures[i].FileName;
-                string texturePath = FileHelper.GetTexture(textureSearchPath, textureFileName);
-                Texture2D mainTexture = CreateTexture(texturePath);
-
-                // TODO there might be an attribute in the PET file telling which textures have masks
-                // find mask for each texture or create an empty one if it doesn't exist
-                string maskPath = GetMaskPath(texturePath);
-                if (File.Exists(maskPath))
+            Material[] materials = petTextures
+                .Select(texture =>
                 {
-                    material = new Material(Shader.Find("MaskedTexture"));
-                    material.SetTexture("_Mask", CreateAlphaTexture(maskPath));
-                }
-                else
-                {
-                    material = new Material(Shader.Find("OpaqueTexture"));
-                }
+                    string textureFileName = texture.FileName;
+                    string texturePath = FileHelper.GetTexture(textureSearchPath, textureFileName);
 
-                material.SetTexture("_MainTex", mainTexture);
-                material.name = textureFileName;
+                    // TODO there might be an attribute in the PET file telling which textures have masks
+                    // find mask for each texture or create an empty one if it doesn't exist
+                    string maskPath = GetMaskPath(texturePath);
 
-                materials[i] = material;
-            }
+                    Material material = File.Exists(maskPath)
+                        ? CreateMaskedMaterial(texturePath, maskPath)
+                        : CreateOpaqueMaterial(texturePath);
+
+                    material.name = textureFileName;
+
+                    return material;
+                })
+                .ToArray();
 
             return materials;
         }
 
-        private static Texture2D CreateTexture(string path)
+        private static Material CreateOpaqueMaterial(string texturePath)
         {
-            byte[] fileData = File.ReadAllBytes(path);
-            Texture2D texture = new Texture2D(0, 0); // size will be automatically adjusted after loading image
-            texture.LoadImage(fileData);
-            return texture;
+            Material material = new Material(OpaqueShader);
+            material.SetTexture(MainTex, CreateTexture(texturePath));
+
+            return material;
         }
 
-        private static Texture2D CreateAlphaTexture(string path)
+        private static Material CreateMaskedMaterial(string texturePath, string maskPath)
+        {
+            Material material = new Material(MaskedShader);
+            material.SetTexture(MainTex, CreateTexture(texturePath));
+            material.SetTexture(Mask, CreateTexture(maskPath));
+
+            return material;
+        }
+
+        private static Texture2D CreateTexture(string path)
         {
             byte[] fileData = File.ReadAllBytes(path);
             Texture2D texture = new Texture2D(0, 0);
